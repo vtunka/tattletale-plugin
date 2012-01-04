@@ -1,0 +1,10 @@
+Introduction:
+This is a simple plugin for Jenkins CI, that allows simple configuration,
+execution and analysis storage of any Java project using the JBoss.org tattletale tool.
+
+License:
+MIT License
+
+Author:
+Vaclav Tunka <vtunka@redhat.com>
+
