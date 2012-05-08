@@ -23,42 +23,48 @@ import java.io.IOException;
  * {@link DescriptorImpl#newInstance(StaplerRequest)} is invoked
  * and a new {@link TattletaleBuilder} is created. The created
  * instance is persisted to the project configuration XML by using
- * XStream, so this allows you to use instance fields (like {@link #name})
+ * XStream, so this allows you to use instance fields (like {@link #projectLocation})
  * to remember the configuration.
  *
  * <p>
  * When a build is performed, the {@link #perform(AbstractBuild, Launcher, BuildListener)}
  * method will be invoked. 
  *
- * @author Kohsuke Kawaguchi
+ * @author Vaclav Tunka
  */
 public class TattletaleBuilder extends Builder {
 
-    private final String name;
+    private final String projectLocation;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public TattletaleBuilder(String name) {
-        this.name = name;
+    public TattletaleBuilder(String projectLocation) {
+        this.projectLocation = projectLocation;
     }
 
     /**
      * We'll use this from the <tt>config.jelly</tt>.
      */
-    public String getName() {
-        return name;
+    public String getProjectLocation() {
+        return projectLocation;
     }
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         // This is where you 'build' the project.
-        // Since this is a dummy, we just say 'hello world' and call that a build.
 
+    	listener.getLogger().println("Project "+projectLocation+"!");
+    	
         // This also shows how you can consult the global configuration of the builder
-        if (getDescriptor().getUseFrench())
-            listener.getLogger().println("Bonjour, "+name+"!");
-        else
-            listener.getLogger().println("Hello, "+name+"!");
+        if (getDescriptor().getOverrideConfig()) {
+        	listener.getLogger().println("Default global config overriden.");
+        	listener.getLogger().println("Tattletale jar location: \n" 
+        			+ getDescriptor().getTattletaleJarLocation());
+        	listener.getLogger().println("Tattletale properties location: \n" 
+        			+ getDescriptor().getPropertiesLocation());
+        	
+        }
+        
         return true;
     }
 
@@ -75,7 +81,7 @@ public class TattletaleBuilder extends Builder {
      * The class is marked as public so that it can be accessed from views.
      *
      * <p>
-     * See <tt>src/main/resources/hudson/plugins/hello_world/HelloWorldBuilder/*.jelly</tt>
+     * See <tt>src/main/resources/org/jenkinsci/plugins/TattletaleBuilder/*.jelly</tt>
      * for the actual HTML fragment for the configuration screen.
      */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
@@ -87,7 +93,11 @@ public class TattletaleBuilder extends Builder {
          * <p>
          * If you don't want fields to be persisted, use <tt>transient</tt>.
          */
-        private boolean useFrench;
+        private boolean overrideConfig;
+        
+        private String tattletaleJarLocation;
+
+		private String propertiesLocation;
 
         /**
          * Performs on-the-fly validation of the form field 'name'.
@@ -100,9 +110,9 @@ public class TattletaleBuilder extends Builder {
         public FormValidation doCheckName(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
-                return FormValidation.error("Please set a name");
+                return FormValidation.error("Please set a project location to be analyzed.");
             if (value.length() < 4)
-                return FormValidation.warning("Isn't the name too short?");
+                return FormValidation.warning("Isn't it too short?");
             return FormValidation.ok();
         }
 
@@ -115,14 +125,16 @@ public class TattletaleBuilder extends Builder {
          * This human readable name is used in the configuration screen.
          */
         public String getDisplayName() {
-            return "Say hello world";
+            return "Invoke Tattletale";
         }
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             // To persist global configuration information,
             // set that to properties and call save().
-            useFrench = formData.getBoolean("useFrench");
+            overrideConfig = formData.getBoolean("overrideConfig");
+            tattletaleJarLocation = formData.getString("jarLocation");
+            propertiesLocation =  formData.getString("propertiesLocation");
             // ^Can also use req.bindJSON(this, formData);
             //  (easier when there are many fields; need set* methods for this, like setUseFrench)
             save();
@@ -135,9 +147,17 @@ public class TattletaleBuilder extends Builder {
          * The method name is bit awkward because global.jelly calls this method to determine
          * the initial state of the checkbox by the naming convention.
          */
-        public boolean getUseFrench() {
-            return useFrench;
+        public boolean getOverrideConfig() {
+            return overrideConfig;
         }
+        
+        public String getTattletaleJarLocation() {
+			return tattletaleJarLocation;
+		}
+
+		public String getPropertiesLocation() {
+			return propertiesLocation;
+		}
     }
 }
 

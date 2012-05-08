@@ -17,25 +17,23 @@
       is mapped to our webapp/ directory, so this is a convenient way to serve
       static resources.
     -->
-    <f:entry title="Dummy config"
-      description="Check if we should say hello in French"
+    <f:entry title="Override default configuration"
+      description="Check to override defaults"
       help="/plugin/tattletale-plugin/help-globalConfig.html">
       <!--
         We'll have on input field. The 'descriptor' variable represents our descriptor
         object, so we use that to determine the initial value for this form.
       -->
-      <f:checkbox name="useFrench" checked="${descriptor.useFrench()}" />
+      <f:checkbox name="overrideConfig" checked="${descriptor.getOverrideConfig()}" />
     </f:entry>
     
     <f:entry title="Tattletale jar location"
-      help="/plugin/tattletale-plugin/help-globalConfig.html"
       field="jarLocation">
       <f:textbox />
     </f:entry>
     
     <f:entry title="Tattletale properties file location"
       description="Enter the tattletale properties file location"
-      help="/plugin/tattletale-plugin/help-globalConfig.html"
       field="propertiesLocation">
       <f:textbox />
     </f:entry>
