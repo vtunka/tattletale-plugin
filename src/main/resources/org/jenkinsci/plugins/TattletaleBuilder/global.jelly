@@ -28,7 +28,12 @@
     </f:entry>
     
     <f:entry title="Tattletale jar location"
-      field="jarLocation">
+      field="tattletaleJarLocation">
+      <f:textbox />
+    </f:entry>
+    
+    <f:entry title="Javassist jar location"
+      field="javassistJarLocation">
       <f:textbox />
     </f:entry>
     

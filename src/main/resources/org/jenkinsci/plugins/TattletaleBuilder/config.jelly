@@ -9,7 +9,15 @@
     Creates a text field that shows the value of the "name" property.
     When submitted, it will be passed to the corresponding constructor parameter.
   -->
-  <f:entry title="Project location" field="projectLocation">
-    <f:textbox />
+  <f:entry title="Input directory" 
+  		   field="inputDirectory"
+  		   help="/plugin/tattletale-plugin/help-inputDirectory.html">
+    <f:textbox default="." />
+  </f:entry>
+  
+  <f:entry title="Report output directory" 
+           field="outputDirectory"
+           help="/plugin/tattletale-plugin/help-outputDirectory.html">
+    <f:textbox default="tattletale-report" />
   </f:entry>
 </j:jelly>

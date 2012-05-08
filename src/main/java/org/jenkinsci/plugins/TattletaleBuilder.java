@@ -23,7 +23,7 @@ import java.io.IOException;
  * {@link DescriptorImpl#newInstance(StaplerRequest)} is invoked
  * and a new {@link TattletaleBuilder} is created. The created
  * instance is persisted to the project configuration XML by using
- * XStream, so this allows you to use instance fields (like {@link #projectLocation})
+ * XStream, so this allows you to use instance fields (like {@link #inputDirectory})
  * to remember the configuration.
  *
  * <p>
@@ -34,32 +34,43 @@ import java.io.IOException;
  */
 public class TattletaleBuilder extends Builder {
 
-    private final String projectLocation;
+    private final String inputDirectory;
+    
+    private final String outputDirectory;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public TattletaleBuilder(String projectLocation) {
-        this.projectLocation = projectLocation;
+    public TattletaleBuilder(String inputDirectory, String outputDirectory) {
+        this.inputDirectory = inputDirectory;
+        this.outputDirectory = outputDirectory;
     }
 
     /**
      * We'll use this from the <tt>config.jelly</tt>.
      */
-    public String getProjectLocation() {
-        return projectLocation;
+    public String getInputDirectory() {
+        return inputDirectory;
     }
 
-    @Override
+    public String getOutputLocation() {
+		return outputDirectory;
+	}
+
+	@Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         // This is where you 'build' the project.
 
-    	listener.getLogger().println("Project "+projectLocation+"!");
+    	listener.getLogger().println("Input directory: " + inputDirectory);
+    	
+    	listener.getLogger().println("Output directory: " + outputDirectory);
     	
         // This also shows how you can consult the global configuration of the builder
         if (getDescriptor().getOverrideConfig()) {
         	listener.getLogger().println("Default global config overriden.");
         	listener.getLogger().println("Tattletale jar location: \n" 
         			+ getDescriptor().getTattletaleJarLocation());
+        	listener.getLogger().println("Javassist jar location: \n" 
+        			+ getDescriptor().getJavassistJarLocation());
         	listener.getLogger().println("Tattletale properties location: \n" 
         			+ getDescriptor().getPropertiesLocation());
         	
@@ -96,9 +107,11 @@ public class TattletaleBuilder extends Builder {
         private boolean overrideConfig;
         
         private String tattletaleJarLocation;
+        
+        private String javassistJarLocation;
 
 		private String propertiesLocation;
-
+		
         /**
          * Performs on-the-fly validation of the form field 'name'.
          *
@@ -133,7 +146,8 @@ public class TattletaleBuilder extends Builder {
             // To persist global configuration information,
             // set that to properties and call save().
             overrideConfig = formData.getBoolean("overrideConfig");
-            tattletaleJarLocation = formData.getString("jarLocation");
+            tattletaleJarLocation = formData.getString("tattletaleJarLocation");
+            javassistJarLocation =  formData.getString("javassistJarLocation");
             propertiesLocation =  formData.getString("propertiesLocation");
             // ^Can also use req.bindJSON(this, formData);
             //  (easier when there are many fields; need set* methods for this, like setUseFrench)
@@ -142,8 +156,7 @@ public class TattletaleBuilder extends Builder {
         }
 
         /**
-         * This method returns true if the global configuration says we should speak French.
-         *
+         * 
          * The method name is bit awkward because global.jelly calls this method to determine
          * the initial state of the checkbox by the naming convention.
          */
@@ -154,10 +167,15 @@ public class TattletaleBuilder extends Builder {
         public String getTattletaleJarLocation() {
 			return tattletaleJarLocation;
 		}
+        
+        public String getJavassistJarLocation() {
+        	return javassistJarLocation;
+        }
 
 		public String getPropertiesLocation() {
 			return propertiesLocation;
 		}
+
     }
 }
 
