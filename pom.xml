@@ -10,7 +10,7 @@
   <artifactId>tattletale-plugin</artifactId>
   <version>0.1</version>
   <packaging>hpi</packaging>
-  <name>Jenkins Tattletale plugin</name>
+  <name>Tattletale plugin</name>
   <description>Integrates Tattletale to Jenkins</description>
 <!--  <url>http://wiki.jenkins-ci.org/display/JENKINS/Tattletale+Plugin</url>-->
 
@@ -48,4 +48,5 @@
       <url>http://repo.jenkins-ci.org/public/</url>
     </pluginRepository>
   </pluginRepositories>
+  
 </project>
