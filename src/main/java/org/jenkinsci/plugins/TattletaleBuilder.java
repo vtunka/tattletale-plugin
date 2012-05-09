@@ -112,20 +112,38 @@ public class TattletaleBuilder extends Builder {
 
 		private String propertiesLocation;
 		
+		public DescriptorImpl() {
+            super(TattletaleBuilder.class);
+            load();
+        }
+		
         /**
-         * Performs on-the-fly validation of the form field 'name'.
+         * Performs on-the-fly validation of the form field 'inputDirectory'.
          *
          * @param value
          *      This parameter receives the value that the user has typed.
          * @return
          *      Indicates the outcome of the validation. This is sent to the browser.
          */
-        public FormValidation doCheckName(@QueryParameter String value)
+        public FormValidation doCheckInputDirectory(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
                 return FormValidation.error("Please set a project location to be analyzed.");
-            if (value.length() < 4)
-                return FormValidation.warning("Isn't it too short?");
+            return FormValidation.ok();
+        }
+        
+        /**
+         * Performs on-the-fly validation of the form field 'outputDirectory'.
+         *
+         * @param value
+         *      This parameter receives the value that the user has typed.
+         * @return
+         *      Indicates the outcome of the validation. This is sent to the browser.
+         */
+        public FormValidation doCheckOutputDirectory(@QueryParameter String value)
+                throws IOException, ServletException {
+            if (value.length() == 0)
+                return FormValidation.error("Please set tattletale report directory");
             return FormValidation.ok();
         }
 
@@ -155,7 +173,23 @@ public class TattletaleBuilder extends Builder {
             return super.configure(req,formData);
         }
 
-        /**
+        public void setOverrideConfig(boolean overrideConfig) {
+			this.overrideConfig = overrideConfig;
+		}
+
+		public void setTattletaleJarLocation(String tattletaleJarLocation) {
+			this.tattletaleJarLocation = tattletaleJarLocation;
+		}
+
+		public void setJavassistJarLocation(String javassistJarLocation) {
+			this.javassistJarLocation = javassistJarLocation;
+		}
+
+		public void setPropertiesLocation(String propertiesLocation) {
+			this.propertiesLocation = propertiesLocation;
+		}
+
+		/**
          * 
          * The method name is bit awkward because global.jelly calls this method to determine
          * the initial state of the checkbox by the naming convention.
