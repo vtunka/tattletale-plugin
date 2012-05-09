@@ -13,7 +13,15 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletException;
+
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 
 /**
  * Sample {@link Builder}.
@@ -56,28 +64,127 @@ public class TattletaleBuilder extends Builder {
 		return outputDirectory;
 	}
 
+    /**
+     * This method contains all the logic performed in the build step.
+     */
 	@Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         // This is where you 'build' the project.
 
-    	listener.getLogger().println("Input directory: " + inputDirectory);
+    	logConfiguration(listener);
+    	
+    	boolean loaded = loadTattletale(listener);
+		
+    	if (!loaded)
+    		return false;
+    	
+        return true;
+    }
+
+	/**
+	 * Tries to load tattletale jar at runtime using URLClassloader
+	 */
+	private boolean loadTattletale(BuildListener listener) {
+		File tattletaleExecutable = new File(getDescriptor().getTattletaleJarLocation());
+    	URL url = null;
+    	
+    	try {
+			url = tattletaleExecutable.toURI().toURL();
+		} catch (MalformedURLException e) {
+			listener.getLogger().println("Malformed tattletale executable path");
+			e.printStackTrace();
+			return false;
+		}
+        
+		URL[] urlCollection = new URL[]{url};
+		
+		ClassLoader cl = new URLClassLoader(urlCollection);
+		
+		Class clazz = null;
+		
+		try {
+			clazz = cl.loadClass("org.jboss.tattletale.Main");
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+			return false;
+		}
+			
+		Constructor ctor;
+		try {
+			ctor = clazz.getConstructor();
+		} catch (SecurityException e) {
+			e.printStackTrace();
+			return false;
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		Object tattletaleInstance;
+		try {
+			tattletaleInstance = ctor.newInstance();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+			return false;
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+			return false;
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+			return false;
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		Method executeMethod = null;
+		try {
+			executeMethod = clazz.getMethod("execute");
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		try {
+			executeMethod.invoke(tattletaleInstance);
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return true;
+	}
+	
+	
+
+	private void logConfiguration(BuildListener listener) {
+		listener.getLogger().println("Input directory: " + inputDirectory);
     	
     	listener.getLogger().println("Output directory: " + outputDirectory);
     	
         // This also shows how you can consult the global configuration of the builder
         if (getDescriptor().getOverrideConfig()) {
-        	listener.getLogger().println("Default global config overriden.");
-        	listener.getLogger().println("Tattletale jar location: \n" 
-        			+ getDescriptor().getTattletaleJarLocation());
-        	listener.getLogger().println("Javassist jar location: \n" 
-        			+ getDescriptor().getJavassistJarLocation());
-        	listener.getLogger().println("Tattletale properties location: \n" 
-        			+ getDescriptor().getPropertiesLocation());
-        	
+        	listener.getLogger().println("Default global config overriden.");	
         }
         
-        return true;
-    }
+    	listener.getLogger().println("Tattletale jar location: \n" 
+    			+ getDescriptor().getTattletaleJarLocation());
+    	listener.getLogger().println("Javassist jar location: \n" 
+    			+ getDescriptor().getJavassistJarLocation());
+    	listener.getLogger().println("Tattletale properties location: \n" 
+    			+ getDescriptor().getPropertiesLocation());
+    	
+    	listener.getLogger().println();
+	}
 
     // Overridden for better type safety.
     // If your plugin doesn't really define any property on Descriptor,
@@ -112,6 +219,9 @@ public class TattletaleBuilder extends Builder {
 
 		private String propertiesLocation;
 		
+		/**
+		 * Required for proper loading of the global config form values.
+		 */
 		public DescriptorImpl() {
             super(TattletaleBuilder.class);
             load();
@@ -153,12 +263,15 @@ public class TattletaleBuilder extends Builder {
         }
 
         /**
-         * This human readable name is used in the configuration screen.
+         * This human readable name is used in the project configuration screen.
          */
         public String getDisplayName() {
             return "Invoke Tattletale";
         }
 
+        /**
+         * This method is called when user saves the global configuration form.
+         */
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             // To persist global configuration information,
