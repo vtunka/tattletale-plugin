@@ -14,8 +14,11 @@ import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletException;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -73,18 +76,82 @@ public class TattletaleBuilder extends Builder {
 
     	logConfiguration(listener);
     	
-    	boolean loaded = loadTattletale(listener);
+    	boolean tattletaleRunSucceeded = false;
+    	
+    	listener.getLogger().println("[Tattletale] Starting analysis.");
+    	
+    	// tattletaleRunSucceeded = loadTattletale(build, listener);
+    	
+    	String workspaceURI = "";
+    	String workspacePath = "";
+    	try {
+			workspaceURI = build.getWorkspace().absolutize().toURI().toString();
+			workspacePath = workspaceURI.substring(5);
+			listener.getLogger().println("[Tattletale] Workspace path: " + workspacePath);
+		} catch (IOException e) {
+			listener.getLogger().println("[Tattletale] Error running tattletale.");
+			listener.getLogger().println(e.getMessage());
+		} catch (InterruptedException e) {
+			listener.getLogger().println("[Tattletale] Error running tattletale.");
+			listener.getLogger().println(e.getMessage());
+		}
+    	
+    	String command;
+    	StringBuilder sb = new StringBuilder();
+    	sb.append("java -jar ");
+    	sb.append(getDescriptor().getTattletaleJarLocation());
+    	sb.append(" ");
+    	sb.append(workspacePath);
+    	sb.append(inputDirectory);
+    	sb.append(" ");
+    	sb.append(workspacePath);
+    	sb.append(outputDirectory);
+    	command = sb.toString();
+    	
+    	listener.getLogger().println("[Tattletale] Running $ " + command);
+    	
+		Process p;
+		try {
+			p = Runtime.getRuntime().exec(command);
+
+			BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+			String line = reader.readLine();
+			while (line != null) {
+				listener.getLogger().println(line);
+				line = reader.readLine();
+			}
+		} catch (IOException e) {
+			listener.getLogger().println("[Tattletale] Error running tattletale.");
+			listener.getLogger().println(e.getMessage());
+			return false;
+		} 
 		
-    	if (!loaded)
-    		return false;
+		listener.getLogger().println("[Tattletale] Finished analysis.");
     	
         return true;
     }
 
+	
 	/**
-	 * Tries to load tattletale jar at runtime using URLClassloader
+	 * Add the tattletale jar to classpath in runtime
 	 */
-	private boolean loadTattletale(BuildListener listener) {
+	public static void addToClasspath(String s) throws Exception {
+		File f = new File(s);
+		URL u = f.toURI().toURL();
+		URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader
+				.getSystemClassLoader();
+		Class<URLClassLoader> urlClass = URLClassLoader.class;
+		Method method = urlClass.getDeclaredMethod("addURL",
+				new Class[] { URL.class });
+		method.setAccessible(true);
+		method.invoke(urlClassLoader, new Object[] { u });
+	}
+
+	
+	/**
+	 * Tries to load tattletale jar at runtime using URLClassloader and reflection
+	 */
+	private boolean loadTattletale(AbstractBuild build, BuildListener listener) {
 		File tattletaleExecutable = new File(getDescriptor().getTattletaleJarLocation());
     	URL url = null;
     	
@@ -93,6 +160,7 @@ public class TattletaleBuilder extends Builder {
 		} catch (MalformedURLException e) {
 			listener.getLogger().println("Malformed tattletale executable path");
 			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		}
         
@@ -100,23 +168,23 @@ public class TattletaleBuilder extends Builder {
 		
 		ClassLoader cl = new URLClassLoader(urlCollection);
 		
-		Class clazz = null;
+		Class<?> clazz = null;
 		
 		try {
 			clazz = cl.loadClass("org.jboss.tattletale.Main");
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		}
 			
-		Constructor ctor;
+		Constructor<?> ctor;
 		try {
 			ctor = clazz.getConstructor();
 		} catch (SecurityException e) {
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		}
 		
@@ -124,41 +192,48 @@ public class TattletaleBuilder extends Builder {
 		try {
 			tattletaleInstance = ctor.newInstance();
 		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
+			e.getLocalizedMessage();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		} catch (InstantiationException e) {
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		} catch (IllegalAccessException e) {
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		} catch (InvocationTargetException e) {
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
 			return false;
 		}
 		
+		Method setSourceMethod = null;
+		Method setDestinationMethod = null;
 		Method executeMethod = null;
 		try {
+			setSourceMethod = clazz.getMethod("setSource");
+			setDestinationMethod = clazz.getMethod("setDestination");
 			executeMethod = clazz.getMethod("execute");
 		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
+			return false;
 		} catch (NoSuchMethodException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
+			return false;
 		}
 		
 		try {
+			setSourceMethod.invoke(tattletaleInstance, ".");
+			setDestinationMethod.invoke(tattletaleInstance, "tattletale-report");
 			executeMethod.invoke(tattletaleInstance);
 		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
+			return false;
 		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
+			return false;
 		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			listener.getLogger().println(e.getMessage());
+			return false;
 		}
 		
 		return true;
