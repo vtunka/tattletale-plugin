@@ -1,4 +1,4 @@
-package org.jenkinsci.plugins;
+package org.jenkinsci.plugins.tattletale;
 import hudson.Launcher;
 import hudson.Extension;
 import hudson.util.FormValidation;
@@ -14,17 +14,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletException;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 
 /**
  * Sample {@link Builder}.
@@ -42,13 +32,16 @@ import java.net.URLClassLoader;
  * method will be invoked. 
  *
  * @author Vaclav Tunka
+ * 
  */
 public class TattletaleBuilder extends Builder {
 
     private final String inputDirectory;
     
     private final String outputDirectory;
-
+    
+    private transient TattletaleExecutor executor;
+    
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
     public TattletaleBuilder(String inputDirectory, String outputDirectory) {
@@ -63,7 +56,7 @@ public class TattletaleBuilder extends Builder {
         return inputDirectory;
     }
 
-    public String getOutputLocation() {
+    public String getOutputDirectory() {
 		return outputDirectory;
 	}
 
@@ -80,182 +73,33 @@ public class TattletaleBuilder extends Builder {
     	
     	listener.getLogger().println("[Tattletale] Starting analysis.");
     	
-    	// tattletaleRunSucceeded = loadTattletale(build, listener);
-    	
-    	String workspaceURI = "";
-    	String workspacePath = "";
-    	try {
-			workspaceURI = build.getWorkspace().absolutize().toURI().toString();
-			workspacePath = workspaceURI.substring(5);
-			listener.getLogger().println("[Tattletale] Workspace path: " + workspacePath);
-		} catch (IOException e) {
-			listener.getLogger().println("[Tattletale] Error running tattletale.");
-			listener.getLogger().println(e.getMessage());
-		} catch (InterruptedException e) {
-			listener.getLogger().println("[Tattletale] Error running tattletale.");
-			listener.getLogger().println(e.getMessage());
-		}
-    	
-    	String command;
-    	StringBuilder sb = new StringBuilder();
-    	sb.append("java -jar ");
-    	sb.append(getDescriptor().getTattletaleJarLocation());
-    	sb.append(" ");
-    	sb.append(workspacePath);
-    	sb.append(inputDirectory);
-    	sb.append(" ");
-    	sb.append(workspacePath);
-    	sb.append(outputDirectory);
-    	command = sb.toString();
-    	
-    	listener.getLogger().println("[Tattletale] Running $ " + command);
-    	
-		Process p;
-		try {
-			p = Runtime.getRuntime().exec(command);
-
-			BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			String line = reader.readLine();
-			while (line != null) {
-				listener.getLogger().println(line);
-				line = reader.readLine();
-			}
-		} catch (IOException e) {
-			listener.getLogger().println("[Tattletale] Error running tattletale.");
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} 
+    	executor = new TattletaleExecutor(this, build, listener);
+    	tattletaleRunSucceeded = executor.executeTattletale(); 
 		
 		listener.getLogger().println("[Tattletale] Finished analysis.");
     	
-        return true;
+        return tattletaleRunSucceeded;
     }
 
-	
 	/**
-	 * Add the tattletale jar to classpath in runtime
+	 * Logs the configuration details of tattletale plugin to console.
+	 * @param listener
 	 */
-	public static void addToClasspath(String s) throws Exception {
-		File f = new File(s);
-		URL u = f.toURI().toURL();
-		URLClassLoader urlClassLoader = (URLClassLoader) ClassLoader
-				.getSystemClassLoader();
-		Class<URLClassLoader> urlClass = URLClassLoader.class;
-		Method method = urlClass.getDeclaredMethod("addURL",
-				new Class[] { URL.class });
-		method.setAccessible(true);
-		method.invoke(urlClassLoader, new Object[] { u });
-	}
-
-	
-	/**
-	 * Tries to load tattletale jar at runtime using URLClassloader and reflection
-	 */
-	private boolean loadTattletale(AbstractBuild build, BuildListener listener) {
-		File tattletaleExecutable = new File(getDescriptor().getTattletaleJarLocation());
-    	URL url = null;
-    	
-    	try {
-			url = tattletaleExecutable.toURI().toURL();
-		} catch (MalformedURLException e) {
-			listener.getLogger().println("Malformed tattletale executable path");
-			e.printStackTrace();
-			listener.getLogger().println(e.getMessage());
-			return false;
-		}
-        
-		URL[] urlCollection = new URL[]{url};
-		
-		ClassLoader cl = new URLClassLoader(urlCollection);
-		
-		Class<?> clazz = null;
-		
-		try {
-			clazz = cl.loadClass("org.jboss.tattletale.Main");
-		} catch (ClassNotFoundException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		}
-			
-		Constructor<?> ctor;
-		try {
-			ctor = clazz.getConstructor();
-		} catch (SecurityException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (NoSuchMethodException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		}
-		
-		Object tattletaleInstance;
-		try {
-			tattletaleInstance = ctor.newInstance();
-		} catch (IllegalArgumentException e) {
-			e.getLocalizedMessage();
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (InstantiationException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (IllegalAccessException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (InvocationTargetException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		}
-		
-		Method setSourceMethod = null;
-		Method setDestinationMethod = null;
-		Method executeMethod = null;
-		try {
-			setSourceMethod = clazz.getMethod("setSource");
-			setDestinationMethod = clazz.getMethod("setDestination");
-			executeMethod = clazz.getMethod("execute");
-		} catch (SecurityException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (NoSuchMethodException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		}
-		
-		try {
-			setSourceMethod.invoke(tattletaleInstance, ".");
-			setDestinationMethod.invoke(tattletaleInstance, "tattletale-report");
-			executeMethod.invoke(tattletaleInstance);
-		} catch (IllegalArgumentException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (IllegalAccessException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		} catch (InvocationTargetException e) {
-			listener.getLogger().println(e.getMessage());
-			return false;
-		}
-		
-		return true;
-	}
-	
-	
-
 	private void logConfiguration(BuildListener listener) {
-		listener.getLogger().println("Input directory: " + inputDirectory);
+		listener.getLogger().println("[Tattletale] Input directory: " + inputDirectory);
     	
-    	listener.getLogger().println("Output directory: " + outputDirectory);
+    	listener.getLogger().println("[Tattletale] Output directory: " + outputDirectory);
     	
         // This also shows how you can consult the global configuration of the builder
         if (getDescriptor().getOverrideConfig()) {
         	listener.getLogger().println("Default global config overriden.");	
         }
         
-    	listener.getLogger().println("Tattletale jar location: \n" 
+    	listener.getLogger().println("[Tattletale] Tattletale jar location: \n" 
     			+ getDescriptor().getTattletaleJarLocation());
-    	listener.getLogger().println("Javassist jar location: \n" 
+    	listener.getLogger().println("[Tattletale] Javassist jar location: \n" 
     			+ getDescriptor().getJavassistJarLocation());
-    	listener.getLogger().println("Tattletale properties location: \n" 
+    	listener.getLogger().println("[Tattletale] Tattletale properties location: \n" 
     			+ getDescriptor().getPropertiesLocation());
     	
     	listener.getLogger().println();
