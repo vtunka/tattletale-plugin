@@ -1,0 +1,9 @@
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
+
+<l:layout title="${it.project.displayName} "> 
+    <l:main-panel>
+    	<h1>Tattletale plugin</h1>
+		<div id="container" style="width: 800px; height: 400px; margin: 0 auto"></div>
+	</l:main-panel>
+  </l:layout>
+</j:jelly>
