@@ -124,16 +124,12 @@ public class TattletaleReportArchiver extends Recorder {
             return "Tattletale plugin";
         }
 
-        public String getIconFileName() {
-            File dir = dir();
-            if(dir != null && dir.exists())
-                return "help.gif";
-            else
-                return null;
+        public String getIconFileName(){
+            return "/plugin/tattletale-plugin/img/tattletale-icon-48px.png";
         }
 
         public void doDynamic(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-            new DirectoryBrowserSupport(this, new FilePath(dir()), getTitle(), "help.gif", false).generateResponse(req,rsp,this);
+            new DirectoryBrowserSupport(this, new FilePath(dir()), getTitle(), getIconFileName(), false).generateResponse(req,rsp,this);
         }
 
         protected abstract String getTitle();
