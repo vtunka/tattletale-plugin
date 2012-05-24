@@ -12,14 +12,7 @@
   <packaging>hpi</packaging>
   <name>Tattletale plugin</name>
   <description>Integrates Tattletale to Jenkins</description>
-<!--  <url>http://wiki.jenkins-ci.org/display/JENKINS/Tattletale+Plugin</url>-->
-
-<!--  <distributionManagement>-->
-<!--   <repository>-->
-<!--    <id>maven.jenkins-ci.org</id>-->
-<!--    <url>http://maven.jenkins-ci.org:8081/content/repositories/releases/</url>-->
-<!--   </repository>-->
-<!--  </distributionManagement>-->
+  <url>http://wiki.jenkins-ci.org/display/JENKINS/Tattletale+Plugin</url>
 
   <developers>
     <developer>
@@ -29,9 +22,9 @@
   </developers>
 
   <scm>
-    <connection>scm:git:git://github.com/vtunka/tattletale-plugin.git</connection>
-    <developerConnection>scm:git:git@github.com/vtunka/tattletale-plugin.git</developerConnection>
-    <url>https://github.com/vtunka/tattletale-plugin</url>
+    <connection>scm:git:git://github.com/jenkinsci/tattletale-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/tattletale-plugin.git</developerConnection>
+    <url>https://github.com/jenkinsci/tattletale-plugin</url>
   </scm>
 
   <!-- get every artifact through repo.jenkins-ci.org, which proxies all the artifacts that we need -->
