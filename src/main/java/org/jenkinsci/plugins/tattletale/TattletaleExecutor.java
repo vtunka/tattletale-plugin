@@ -34,11 +34,11 @@ public class TattletaleExecutor {
 	private String workspacePath;
 	private String command;
 	
-	private AbstractBuild build;
+	private AbstractBuild<?,?> build;
 	private BuildListener listener;
 	private TattletaleBuilder tattletaleBuilder;
 
-	public TattletaleExecutor(TattletaleBuilder tattletaleBuilder, AbstractBuild build, BuildListener listener) {
+	public TattletaleExecutor(TattletaleBuilder tattletaleBuilder, AbstractBuild<?,?> build, BuildListener listener) {
 		workspacePath = "";
 		command = "";
 		
@@ -112,7 +112,7 @@ public class TattletaleExecutor {
 	/**
 	 * Tries to load tattletale jar at runtime using URLClassloader and reflection
 	 */
-	private boolean loadTattletale(TattletaleBuilder tattletaleBuilder, AbstractBuild build, BuildListener listener) {
+	private boolean loadTattletale(TattletaleBuilder tattletaleBuilder, AbstractBuild<?,?> build, BuildListener listener) {
 		File tattletaleExecutable = new File(tattletaleBuilder.getDescriptor().getTattletaleJarLocation());
 		URL url = null;
 		
