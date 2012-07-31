@@ -74,7 +74,7 @@ public class TattletaleBuilder extends Builder {
     	listener.getLogger().println("[Tattletale] Starting analysis.");
     	
     	executor = new TattletaleExecutor(this, build, listener);
-    	tattletaleRunSucceeded = executor.executeTattletale(); 
+    	tattletaleRunSucceeded = executor.executeTattletale(launcher); 
 		
 		listener.getLogger().println("[Tattletale] Finished analysis.");
     	
