@@ -61,7 +61,7 @@ public class TattletaleReportArchiver extends Recorder {
     /**
      * Gets the directory where the Tattletale reports are stored for the given build.
      */
-    private static File getTattletaleReportDir(Run run) {
+    private static File getTattletaleReportDir(Run<?,?> run) {
         return new File(run.getRootDir(),"tattletale-report");
     }
 
@@ -111,7 +111,7 @@ public class TattletaleReportArchiver extends Recorder {
     }
     
     @Override
-    public Collection<Action> getProjectActions(AbstractProject project) {
+    public Collection<Action> getProjectActions(AbstractProject<?,?> project) {
         return Collections.<Action>singleton(new TattletaleAction(project));
     }
     
@@ -146,9 +146,9 @@ public class TattletaleReportArchiver extends Recorder {
 
         protected File dir() {
             if (project instanceof AbstractProject) {
-                AbstractProject abstractProject = (AbstractProject) project;
+                AbstractProject<?,?> abstractProject = (AbstractProject<?,?>) project;
 
-                Run run = abstractProject.getLastSuccessfulBuild();
+                Run<?,?> run = abstractProject.getLastSuccessfulBuild();
                 if (run != null) {
                     File tattletaleReportDir = getTattletaleReportDir(run);
 
@@ -218,7 +218,7 @@ public class TattletaleReportArchiver extends Recorder {
         /**
          * Performs on-the-fly validation on the file mask wildcard.
          */
-        public FormValidation doCheck(@AncestorInPath AbstractProject project, @QueryParameter String value) throws IOException, ServletException {
+        public FormValidation doCheck(@AncestorInPath AbstractProject<?,?> project, @QueryParameter String value) throws IOException, ServletException {
             FilePath ws = project.getSomeWorkspace();
             return ws != null ? ws.validateRelativeDirectory(value) : FormValidation.ok();
         }

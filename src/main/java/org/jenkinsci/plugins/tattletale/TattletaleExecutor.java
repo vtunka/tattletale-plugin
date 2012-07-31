@@ -1,12 +1,11 @@
 package org.jenkinsci.plugins.tattletale;
 
+import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -31,45 +30,39 @@ import java.net.URLClassLoader;
  */
 public class TattletaleExecutor {
 
-	private String workspacePath;
-	private String command;
+	private final String workspacePath;
+	private final String[] command;
 	
-	private AbstractBuild build;
-	private BuildListener listener;
-	private TattletaleBuilder tattletaleBuilder;
+	private final AbstractBuild<?,?> build;
+	private final BuildListener listener;
+	private final TattletaleBuilder tattletaleBuilder;
 
-	public TattletaleExecutor(TattletaleBuilder tattletaleBuilder, AbstractBuild build, BuildListener listener) {
-		workspacePath = "";
-		command = "";
-		
+	public TattletaleExecutor(TattletaleBuilder tattletaleBuilder, AbstractBuild<?,?> build, BuildListener listener) {
 		this.tattletaleBuilder = tattletaleBuilder;
 		this.build = build;
 		this.listener = listener;
+		
+		workspacePath = initWorkspacePath();
+		command = constructCommand();
 	}
 
-	public boolean executeTattletale() {
+	public boolean executeTattletale(Launcher launcher) {
 		boolean successfull = true;
 		
-		successfull = initWorkspacePath();
+		successfull = (workspacePath != null);
 		if (!successfull) return successfull;
 		
 		listener.getLogger().println("[Tattletale] Workspace path: " + workspacePath);
 		
-		constructCommand();
-		listener.getLogger().println("[Tattletale] Running $ " + command);
-		
-		Process p;
 		try {
-			p = Runtime.getRuntime().exec(command);
-	
-			BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			String line = reader.readLine();
-			while (line != null) {
-				listener.getLogger().println(line);
-				line = reader.readLine();
-			}
+			int exitCode = launcher.launch().cmds(command).envs(build.getEnvironment(listener)).pwd(build.getWorkspace()).stdout(listener).join();
+			successfull = (exitCode == 0);
 		} catch (IOException e) {
 			listener.getLogger().println("[Tattletale] Error running tattletale.");
+			listener.getLogger().println(e.getMessage());
+			return false;
+		} catch (InterruptedException e) {
+			listener.getLogger().println("[Tattletale] Error running tattletale - interrupted.");
 			listener.getLogger().println(e.getMessage());
 			return false;
 		}
@@ -77,42 +70,34 @@ public class TattletaleExecutor {
 		return successfull;
 	}
 
-	private void constructCommand() {
-		StringBuilder sb = new StringBuilder();
-		sb.append("java -jar ");
-		sb.append(tattletaleBuilder.getDescriptor().getTattletaleJarLocation());
-		sb.append(" ");
-		sb.append(workspacePath);
-		sb.append(tattletaleBuilder.getInputDirectory());
-		sb.append(" ");
-		sb.append(workspacePath);
-		sb.append(tattletaleBuilder.getOutputDirectory());
-		command = sb.toString();
+	private String[] constructCommand() {
+		String jar = tattletaleBuilder.getDescriptor().getTattletaleJarLocation();
+		String input  = workspacePath + File.separator + tattletaleBuilder.getInputDirectory();
+		String output = workspacePath + File.separator + tattletaleBuilder.getOutputDirectory();
+		return new String[]{"java", "-jar", jar, input, output};
 	}
 	
-	private boolean initWorkspacePath() {
-		String workspaceURI = "";
+	private String initWorkspacePath() {
+		String workspace = "";
 		try {
-			workspaceURI = build.getWorkspace().absolutize().toURI().toString();
-			workspacePath = workspaceURI.substring(5);
-			
+			workspace = build.getWorkspace().absolutize().getRemote();
 		} catch (IOException e) {
 			listener.getLogger().println("[Tattletale] Error running tattletale.");
 			listener.getLogger().println(e.getMessage());
-			return false;
+			return null;
 		} catch (InterruptedException e) {
 			listener.getLogger().println("[Tattletale] Error running tattletale.");
 			listener.getLogger().println(e.getMessage());
-			return false;
+			return null;
 		}
 		
-		return true;
+		return workspace;
 	}
 	
 	/**
 	 * Tries to load tattletale jar at runtime using URLClassloader and reflection
 	 */
-	private boolean loadTattletale(TattletaleBuilder tattletaleBuilder, AbstractBuild build, BuildListener listener) {
+	private boolean loadTattletale(TattletaleBuilder tattletaleBuilder, AbstractBuild<?,?> build, BuildListener listener) {
 		File tattletaleExecutable = new File(tattletaleBuilder.getDescriptor().getTattletaleJarLocation());
 		URL url = null;
 		
