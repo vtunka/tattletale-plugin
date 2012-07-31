@@ -64,7 +64,7 @@ public class TattletaleBuilder extends Builder {
      * This method contains all the logic performed in the build step.
      */
 	@Override
-    public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
+    public boolean perform(AbstractBuild<?,?> build, Launcher launcher, BuildListener listener) {
         // This is where you 'build' the project.
 
     	logConfiguration(listener);
@@ -74,7 +74,7 @@ public class TattletaleBuilder extends Builder {
     	listener.getLogger().println("[Tattletale] Starting analysis.");
     	
     	executor = new TattletaleExecutor(this, build, listener);
-    	tattletaleRunSucceeded = executor.executeTattletale(); 
+    	tattletaleRunSucceeded = executor.executeTattletale(launcher); 
 		
 		listener.getLogger().println("[Tattletale] Finished analysis.");
     	
